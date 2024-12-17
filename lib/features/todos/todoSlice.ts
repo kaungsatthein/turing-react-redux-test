@@ -1,4 +1,5 @@
-import {createSlice, PayloadAction} from "@reduxjs/toolkit";
+import {createAppSlice} from "@/lib/createAppSlice";
+import {PayloadAction} from "@reduxjs/toolkit";
 
 export interface TodoProps {
     id: number;
@@ -6,46 +7,57 @@ export interface TodoProps {
     completed: boolean;
 }
 
-export interface TodoStateProps {
-    todos: Array<TodoProps>;
+interface TodoStateProps {
+    todos: TodoProps[];
+    status: "loading" | "completed"
 }
 
 const dummyTodo: TodoProps[] = [
-    {
-        id: 1,
-        title: "Task 1",
-        completed: false
-    },
-    {
-        id: 2,
-        title: "Task 2",
-        completed: true
-    },
-]
+    {id: 1, title: 'Task 1', completed: false},
+    {id: 2, title: 'Task 2', completed: true},
+];
 
 const initialState: TodoStateProps = {
-    todos: dummyTodo
-}
+    todos: dummyTodo,
+    status: "loading",
+};
 
-export const todoSlice = createSlice({
-    name: "todos",
+export const todoSlice = createAppSlice({
+    name: "todo",
     initialState,
-    reducers: {
-        addTodo: (state, action: PayloadAction<TodoProps>) => {
-            state.todos.push(action.payload)
-        },
-        deleteTodo: (state, action: PayloadAction<TodoProps>) => {
-            state.todos = state.todos.filter((todo) => todo.id !== action.payload.id)
-        },
-        updateTodo: (state, action: PayloadAction<TodoProps>) => {
-            const id = action.payload.id;
-            state.todos = state.todos.map(todo => todo.id === id ? {...todo, ...action.payload} : todo)
-        }
-    },
+    reducers: (create) => ({
+        loading: create.reducer((state) => {
+            state.status = "loading";
+        }),
+        completed: create.reducer((state) => {
+            state.status = "completed";
+        }),
+        addTodo: create.reducer((state, action: PayloadAction<TodoProps>) => {
+            state.todos.push(action.payload);
+        }),
+        deleteTodo: create.reducer((state, action: PayloadAction<TodoProps>) => {
+            state.todos = state.todos.filter((todo) => todo.id !== action.payload.id);
+        }),
+        updateTodo: create.reducer((state, action: PayloadAction<TodoProps>) => {
+            state.todos = state.todos.map((todo) =>
+                todo.id === action.payload.id ? action.payload : todo
+            );
+        }),
+        loadAllTodo: create.asyncThunk(
+            async () => {
+                const response = await fetch('https://jsonplaceholder.typicode.com/todos');
+                const json = await response.json();
+                return json;
+            },
+        ),
+    }),
     selectors: {
-        selectTodo: (todo) => todo.todos,
-    }
+        selectTodo: (state: TodoStateProps) => state.todos,
+        selectCompletedTodo: (state: TodoStateProps) => state.todos.filter(todo => todo.completed)
+    },
 });
 
-export const {addTodo, deleteTodo, updateTodo} = todoSlice.actions;
-export const selectTodos = todoSlice.selectors.selectTodo;
+export const {addTodo, deleteTodo, updateTodo, loadAllTodo, loading, completed} = todoSlice.actions;
+export const {selectTodo, selectCompletedTodo} = todoSlice.selectors;
+
+
